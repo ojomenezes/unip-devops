@@ -1,0 +1,55 @@
+name: Deploy website
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  infra:
+    name: Infra
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: ./infra
+
+    steps:
+    # Clona o repositório
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Efetua login na Azure
+    - name: Az Login
+      run: az login --use-device-code
+
+    # Seta a subscription na Azure
+    - name: Az Set Subscription
+      run: az account set --subscription ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+    # Instala o Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    # Inicializa o Terraform
+    - name: Terraform Init
+      run: terraform init
+
+    # Importa o Resource Group da Azure para o Terraform
+    - name: Terraform Import Resource Group
+      run: terraform import -var='nome_resource_group=${{ vars.AZURE_RESOURCE_GROUP_ID }}' -var='nome_service_plan=${{ vars.AZURE_SERVICE_PLAN_NAME }}' -var='nome_webapp=${{ vars.AZURE_WEBAPP_NAME }}' azurerm_resource_group.rg /subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.AZURE_RESOURCE_GROUP_ID }}
+
+    # Importa o AppServicePlan da Azure para o Terraform (caso exista)
+    - name: Terraform Import ASP
+      run: terraform import -var='nome_resource_group=${{ vars.AZURE_RESOURCE_GROUP_ID }}' -var='nome_service_plan=${{ vars.AZURE_SERVICE_PLAN_NAME }}' -var='nome_webapp=${{ vars.AZURE_WEBAPP_NAME }}' azurerm_service_plan.appserviceplan /subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.AZURE_RESOURCE_GROUP_ID }}/providers/Microsoft.Web/serverfarms/${{ vars.AZURE_SERVICE_PLAN_NAME }}
+      continue-on-error: true
+
+    # Importa o WebApp da Azure para o Terraform (caso exista)
+    - name: Terraform Import WebApp
+      run: terraform import -var='nome_resource_group=${{ vars.AZURE_RESOURCE_GROUP_ID }}' -var='nome_service_plan=${{ vars.AZURE_SERVICE_PLAN_NAME }}' -var='nome_webapp=${{ vars.AZURE_WEBAPP_NAME }}' azurerm_linux_web_app.webapp /subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.AZURE_RESOURCE_GROUP_ID }}/providers/Microsoft.Web/sites/${{ vars.AZURE_WEBAPP_NAME }}
+      continue-on-error: true
+
+    # Cria/Atualiza os recursos na Azure
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var='nome_resource_group=${{ vars.AZURE_RESOURCE_GROUP_ID }}' -var='nome_service_plan=${{ vars.AZURE_SERVICE_PLAN_NAME }}' -var='nome_webapp=${{ vars.AZURE_WEBAPP_NAME }}'
