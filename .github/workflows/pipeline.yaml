@@ -74,3 +74,11 @@ jobs:
           
       - name: Build with Maven
         run: mvn package
+        
+      - name: Azure WebApp
+        uses: Azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: aplicacao/target/booty-duke-app-service-jar-with-dependencies.jar        
+          
