@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.6.0"
+      version = "~> 3.68.0"
     }
   }
   required_version = ">= 0.14.9"
@@ -41,5 +41,12 @@ resource "azurerm_linux_web_app" "webapp" {
   #  minimum_tls_version = "1.2"
     always_on         = false // Required for F1 plan (even though docs say that it defaults to false)
     use_32_bit_worker = true // Required for F1 plan
+    
+application_stack {
+      java_server = "JAVA"
+      java_server_version = "17"
+      java_version = "17"
+    }
+
   }
 }
